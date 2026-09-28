@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rabbits & Wolves · 모의실험</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><div class="brand-mark">🌿</div><div><small>통합과학 2 · 생태계 상호작용</small><h1>Rabbits <b>&</b> Wolves</h1></div></div>
+  <nav class="nav"><a class="active" href="index.html">모의실험</a><a href="game.html">생존 게임</a><a href="submit.html">캡처·해석 제출</a></nav>
+</div></header>
+<main class="page" id="captureArea">
+  <div class="lab-grid">
+    <section class="panel">
+      <div class="section-title"><div><div class="kicker">LIVE ECOSYSTEM</div><h2>숲 생태계</h2></div>
+        <div class="btn-row"><button id="playBtn" class="btn-primary">▶ 시작</button><button id="stepBtn" class="btn-secondary">1 STEP</button><button id="resetBtn" class="btn-secondary">초기화</button></div>
+      </div>
+      <div class="status-row">
+        <div class="status-cell"><small>STEP</small><div class="status-value" id="step">000</div></div>
+        <div class="status-cell"><small>식생</small><div class="status-value">🌿 <span id="veg">0</span></div></div>
+        <div class="status-cell"><small>피식자</small><div class="status-value">🐇 <span id="rabbit">0</span></div></div>
+        <div class="status-cell"><small>포식자</small><div class="status-value">🐺 <span id="wolf">0</span></div></div>
+        <div class="status-cell"><small>기타</small><div class="status-value"><span id="other">—</span></div></div>
+      </div>
+      <div class="eco-wrap"><canvas id="world" width="980" height="645"></canvas></div>
+      <div class="world-note"><span>격자 안에서 개체가 이동·섭식·번식·사망합니다.</span><span>표시 아이콘 수는 많을 때 일부만 그려지며, 상단 개체수는 실제 값입니다.</span></div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">PARAMETERS</div><h3>조작 변인</h3></div><button id="fluctBtn" class="btn-warm">변동 큰 예시</button></div>
+        <div class="control-grid">
+          <div class="control"><label>🐇 피식자 출생률 <output id="rbOut">10%</output></label><input id="rb" type="range" min="1" max="22" value="10"></div>
+          <div class="control"><label>🐇 피식자 사망률 <output id="rdOut">1.5%</output></label><input id="rd" type="range" min="0" max="8" value="1.5" step=".5"></div>
+          <div class="control"><label>🐇 초기 개체수 <output id="riOut">100</output></label><input id="ri" type="range" min="20" max="260" value="100" step="5"></div>
+          <div class="control"><label>🐺 포식자 출생률 <output id="wbOut">4.5%</output></label><input id="wb" type="range" min="0.5" max="12" value="4.5" step=".5"></div>
+          <div class="control"><label>🐺 포식자 사망률 <output id="wdOut">3.5%</output></label><input id="wd" type="range" min="0.5" max="12" value="3.5" step=".5"></div>
+          <div class="control"><label>🐺 초기 개체수 <output id="wiOut">12</output></label><input id="wi" type="range" min="2" max="60" value="12"></div>
+        </div>
+        <div style="margin-top:10px">
+          <div class="toggle-row"><span><b>🦅 3차 소비자</b><br><small style="color:var(--muted)">포식자를 먹는 상위 소비자</small></span><label class="switch"><input id="thirdToggle" type="checkbox"><span class="slider"></span></label></div>
+          <div class="toggle-row"><span><b>🦊 붉은여우</b><br><small style="color:var(--muted)">피식자를 두고 포식자와 경쟁하는 독립 포식자</small></span><label class="switch"><input id="foxToggle" type="checkbox"><span class="slider"></span></label></div>
+        </div>
+        <div class="btn-row" style="margin-top:10px"><button id="applyBtn" class="btn-primary">조건 적용·초기화</button><button id="captureBtn" class="btn-secondary">📷 현재 화면 저장</button></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">LIVE ECOLOGICAL PYRAMID</div><h3>실시간 생태 피라미드</h3></div></div>
+        <div class="pyramid">
+          <div id="pThird" class="pyr-bar pyr-third"><span>🦅 3차 소비자</span><span id="pThirdCount">0</span></div>
+          <div id="pWolf" class="pyr-bar pyr-wolf"><span>🐺 포식자</span><span id="pWolfCount">0</span></div>
+          <div id="pRabbit" class="pyr-bar pyr-rabbit"><span>🐇 피식자</span><span id="pRabbitCount">0</span></div>
+          <div id="pPlant" class="pyr-bar pyr-plant"><span>🌿 식생량</span><span id="pPlantCount">0</span></div>
+        </div>
+        <div class="fox-row"><span>🦊 붉은여우 · 독립 포식자</span><span id="pFoxCount">0</span></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">OBSERVATION POINTS</div><h3>관찰 포인트</h3></div></div>
+        <ol class="obs">
+          <li>피식자와 포식자의 개체수 최고점은 같은 시점에 나타나는가?</li>
+          <li>각 생물의 출생률 또는 사망률을 바꾸면 변동의 주기와 폭은 어떻게 달라지는가?</li>
+          <li>초기 개체수 비율을 바꾸면 생태계의 장기적인 개체수 변화는 어떻게 달라지는가?</li>
+          <li>3차 소비자 또는 붉은여우를 추가했을 때 생태 피라미드와 개체수 그래프는 어떻게 달라지는가?</li>
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  <section class="panel graph-panel">
+    <div class="section-title"><div><div class="kicker">POPULATION FLUCTUATION</div><h3>개체수 변화 · 양축 그래프</h3></div><small style="color:var(--muted)">왼쪽 축: 피식자 · 오른쪽 축: 포식자류</small></div>
+    <div class="legend"><span><i style="background:#24a55b"></i>피식자</span><span><i style="background:#e24f5b"></i>포식자</span><span><i style="background:#8b58a5"></i>3차 소비자</span><span><i style="background:#ef852e"></i>붉은여우</span></div>
+    <div class="graph-wrap"><canvas id="graph"></canvas></div>
+  </section>
+</main>
+<script src="ecosystem.js"></script>
+<script>
+const eco=new Ecosystem(document.getElementById('world'),document.getElementById('graph'),{seed:20260928});
+const ids=['rb','rd','ri','wb','wd','wi'];
+function syncLabels(){
+  rbOut.textContent=rb.value+'%'; rdOut.textContent=rd.value+'%'; riOut.textContent=ri.value;
+  wbOut.textContent=wb.value+'%'; wdOut.textContent=wd.value+'%'; wiOut.textContent=wi.value;
+}
+function readParams(){
+  return {rabbitBirth:+rb.value/100,rabbitDeath:+rd.value/100,rabbitInitial:+ri.value,wolfBirth:+wb.value/100,wolfDeath:+wd.value/100,wolfInitial:+wi.value};
+}
+function apply(){
+  eco.configure(readParams()); eco.showThird=thirdToggle.checked; eco.showFox=foxToggle.checked; eco.reset(20260928);
+}
+eco.onUpdate=s=>{
+  step.textContent=String(s.step).padStart(3,'0'); veg.textContent=s.veg; rabbit.textContent=s.rabbit; wolf.textContent=s.wolf;
+  const parts=[]; if(eco.showThird)parts.push('🦅 '+s.third); if(eco.showFox)parts.push('🦊 '+s.fox); other.textContent=parts.join(' · ')||'—';
+  updatePyramid('p',s);
+};
+ids.forEach(id=>document.getElementById(id).addEventListener('input',syncLabels));
+applyBtn.onclick=apply; resetBtn.onclick=apply; stepBtn.onclick=()=>eco.step();
+playBtn.onclick=()=>{ if(eco.running){eco.stop();playBtn.textContent='▶ 시작'}else{eco.start(170);playBtn.textContent='⏸ 일시정지'} };
+thirdToggle.onchange=apply; foxToggle.onchange=apply;
+fluctBtn.onclick=()=>{ rb.value=13;rd.value=1;ri.value=150;wb.value=5;wd.value=4.5;wi.value=8;syncLabels();apply(); };
+captureBtn.onclick=()=>saveCapture('captureArea','capture_sim');
+syncLabels(); apply();
+window.addEventListener('resize',()=>eco.render());
+</script>
+</body></html>
