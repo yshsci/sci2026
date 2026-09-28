@@ -39,9 +39,9 @@
           <div class="control"><label>🐺 포식자 사망률 <output id="wdOut">3.5%</output></label><input id="wd" type="range" min="0.5" max="12" value="3.5" step=".5"></div>
           <div class="control"><label>🐺 초기 개체수 <output id="wiOut">12</output></label><input id="wi" type="range" min="2" max="60" value="12"></div>
         </div>
-        <div style="margin-top:10px">
-          <div class="toggle-row"><span><b>🦅 3차 소비자</b><br><small style="color:var(--muted)">포식자를 먹는 상위 소비자</small></span><label class="switch"><input id="thirdToggle" type="checkbox"><span class="slider"></span></label></div>
-          <div class="toggle-row"><span><b>🦊 붉은여우</b><br><small style="color:var(--muted)">피식자를 두고 포식자와 경쟁하는 독립 포식자</small></span><label class="switch"><input id="foxToggle" type="checkbox"><span class="slider"></span></label></div>
+        <div class="control-grid" style="margin-top:10px">
+          <div class="control"><label>🦅 3차 소비자 초기 개체수 <output id="tiOut">0</output></label><input id="ti" type="range" min="0" max="15" value="0" step="1"><div class="hint">0이면 3차 소비자가 없는 조건입니다.</div></div>
+          <div class="control"><label>🦊 붉은여우 초기 개체수 <output id="fiOut">0</output></label><input id="fi" type="range" min="0" max="20" value="0" step="1"><div class="hint">피식자를 두고 기존 포식자와 경쟁합니다.</div></div>
         </div>
         <div class="btn-row" style="margin-top:10px"><button id="applyBtn" class="btn-primary">조건 적용·초기화</button><button id="captureBtn" class="btn-secondary">📷 현재 화면 저장</button></div>
       </section>
@@ -78,27 +78,26 @@
 <script src="ecosystem.js"></script>
 <script>
 const eco=new Ecosystem(document.getElementById('world'),document.getElementById('graph'),{seed:20260928});
-const ids=['rb','rd','ri','wb','wd','wi'];
+const ids=['rb','rd','ri','wb','wd','wi','ti','fi'];
 function syncLabels(){
   rbOut.textContent=rb.value+'%'; rdOut.textContent=rd.value+'%'; riOut.textContent=ri.value;
-  wbOut.textContent=wb.value+'%'; wdOut.textContent=wd.value+'%'; wiOut.textContent=wi.value;
+  wbOut.textContent=wb.value+'%'; wdOut.textContent=wd.value+'%'; wiOut.textContent=wi.value; tiOut.textContent=ti.value; fiOut.textContent=fi.value;
 }
 function readParams(){
-  return {rabbitBirth:+rb.value/100,rabbitDeath:+rd.value/100,rabbitInitial:+ri.value,wolfBirth:+wb.value/100,wolfDeath:+wd.value/100,wolfInitial:+wi.value};
+  return {rabbitBirth:+rb.value/100,rabbitDeath:+rd.value/100,rabbitInitial:+ri.value,wolfBirth:+wb.value/100,wolfDeath:+wd.value/100,wolfInitial:+wi.value,thirdInitial:+ti.value,foxInitial:+fi.value};
 }
 function apply(){
-  eco.configure(readParams()); eco.showThird=thirdToggle.checked; eco.showFox=foxToggle.checked; eco.reset(20260928);
+  eco.configure(readParams()); eco.reset(20260928);
 }
 eco.onUpdate=s=>{
   step.textContent=String(s.step).padStart(3,'0'); veg.textContent=s.veg; rabbit.textContent=s.rabbit; wolf.textContent=s.wolf;
-  const parts=[]; if(eco.showThird)parts.push('🦅 '+s.third); if(eco.showFox)parts.push('🦊 '+s.fox); other.textContent=parts.join(' · ')||'—';
+  const parts=[]; if(+ti.value>0)parts.push('🦅 '+s.third); if(+fi.value>0)parts.push('🦊 '+s.fox); other.textContent=parts.join(' · ')||'—';
   updatePyramid('p',s);
 };
 ids.forEach(id=>document.getElementById(id).addEventListener('input',syncLabels));
 applyBtn.onclick=apply; resetBtn.onclick=apply; stepBtn.onclick=()=>eco.step();
 playBtn.onclick=()=>{ if(eco.running){eco.stop();playBtn.textContent='▶ 시작'}else{eco.start(170);playBtn.textContent='⏸ 일시정지'} };
-thirdToggle.onchange=apply; foxToggle.onchange=apply;
-fluctBtn.onclick=()=>{ rb.value=13;rd.value=1;ri.value=150;wb.value=5;wd.value=4.5;wi.value=8;syncLabels();apply(); };
+fluctBtn.onclick=()=>{ rb.value=13;rd.value=1;ri.value=150;wb.value=5;wd.value=4.5;wi.value=8;ti.value=0;fi.value=0;syncLabels();apply(); };
 captureBtn.onclick=()=>saveCapture('captureArea','capture_sim');
 syncLabels(); apply();
 window.addEventListener('resize',()=>eco.render());

@@ -11,10 +11,14 @@ class Ecosystem {
     this.graphCanvas=graphCanvas; this.gctx=graphCanvas.getContext('2d');
     this.cols=28; this.rows=18; this.stepNo=0; this.running=false; this.timer=null;
     this.history=[]; this.seed=opts.seed||20260928; this.rng=new SeededRNG(this.seed);
-    this.showThird=false; this.showFox=false; this.onUpdate=()=>{};
+    this.onUpdate=()=>{};
     this.params={
       rabbitBirth:.10, rabbitDeath:.015, rabbitInitial:100,
-      wolfBirth:.045, wolfDeath:.035, wolfInitial:12
+      wolfBirth:.045, wolfDeath:.035, wolfInitial:12,
+      thirdInitial:0, foxInitial:0,
+      vegRegrowth:.07, rabbitMetabolic:.55, wolfMetabolic:.85, thirdMetabolic:1.0, foxMetabolic:.8,
+      rabbitFoodEnergy:3.5, wolfFoodEnergy:10, thirdFoodEnergy:14, foxFoodEnergy:8,
+      rabbitMaxAge:120, wolfMaxAge:145, thirdMaxAge:155, foxMaxAge:140
     };
     this.agents=[]; this.veg=[];
   }
@@ -24,8 +28,8 @@ class Ecosystem {
     this.veg=Array.from({length:this.rows},()=>Array.from({length:this.cols},()=>this.rng.int(4)));
     this.spawn('rabbit',this.params.rabbitInitial);
     this.spawn('wolf',this.params.wolfInitial);
-    if(this.showThird) this.spawn('third',3);
-    if(this.showFox) this.spawn('fox',5);
+    if(this.params.thirdInitial>0) this.spawn('third',this.params.thirdInitial);
+    if(this.params.foxInitial>0) this.spawn('fox',this.params.foxInitial);
     this.record(); this.render(); this.onUpdate(this.summary());
   }
   spawn(type,n){
@@ -48,7 +52,7 @@ class Ecosystem {
   record(){
     const c=this.counts();
     this.history.push({step:this.stepNo,...c});
-    if(this.history.length>240) this.history.shift();
+    // 전체 STEP 기록을 유지하여 시작부터 종료까지 한 그래프에 표시
   }
   start(interval=180){
     if(this.running) return;
@@ -79,7 +83,7 @@ class Ecosystem {
     this.stepNo++;
     // vegetation regrowth
     for(let y=0;y<this.rows;y++) for(let x=0;x<this.cols;x++){
-      if(this.veg[y][x]<3 && this.rng.chance(.07)) this.veg[y][x]++;
+      if(this.veg[y][x]<3 && this.rng.chance(this.params.vegRegrowth)) this.veg[y][x]++;
     }
     // shuffle
     for(let i=this.agents.length-1;i>0;i--){ const j=this.rng.int(i+1); [this.agents[i],this.agents[j]]=[this.agents[j],this.agents[i]]; }
@@ -87,26 +91,26 @@ class Ecosystem {
     for(const a of originals){
       if(a._dead) continue;
       a.age++; this.move(a);
-      const metabolic={rabbit:.55,wolf:.85,third:1.0,fox:.8}[a.type];
+      const metabolic={rabbit:this.params.rabbitMetabolic,wolf:this.params.wolfMetabolic,third:this.params.thirdMetabolic,fox:this.params.foxMetabolic}[a.type];
       a.energy-=metabolic;
       if(a.type==='rabbit'){
-        if(this.veg[a.y][a.x]>0){ this.veg[a.y][a.x]--; a.energy+=3.5; }
-        if(this.rng.chance(this.params.rabbitDeath) || a.energy<=0 || a.age>120){ a._dead=true; continue; }
+        if(this.veg[a.y][a.x]>0){ this.veg[a.y][a.x]--; a.energy+=this.params.rabbitFoodEnergy; }
+        if(this.rng.chance(this.params.rabbitDeath) || a.energy<=0 || a.age>this.params.rabbitMaxAge){ a._dead=true; continue; }
         this.reproduce(a,'rabbit',this.params.rabbitBirth);
       } else if(a.type==='wolf'){
         const idx=this.randomAt('rabbit',a.x,a.y);
-        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=10; }
-        if(this.rng.chance(this.params.wolfDeath) || a.energy<=0 || a.age>145){ a._dead=true; continue; }
+        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=this.params.wolfFoodEnergy; }
+        if(this.rng.chance(this.params.wolfDeath) || a.energy<=0 || a.age>this.params.wolfMaxAge){ a._dead=true; continue; }
         this.reproduce(a,'wolf',this.params.wolfBirth);
       } else if(a.type==='third'){
         const idx=this.randomAt('wolf',a.x,a.y);
-        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=14; }
-        if(this.rng.chance(.028) || a.energy<=0 || a.age>155){ a._dead=true; continue; }
+        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=this.params.thirdFoodEnergy; }
+        if(this.rng.chance(.028) || a.energy<=0 || a.age>this.params.thirdMaxAge){ a._dead=true; continue; }
         this.reproduce(a,'third',.018);
       } else if(a.type==='fox'){
         const idx=this.randomAt('rabbit',a.x,a.y);
-        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=8; }
-        if(this.rng.chance(.032) || a.energy<=0 || a.age>140){ a._dead=true; continue; }
+        if(idx>=0 && !this.agents[idx]._dead){ this.killIndex(idx); a.energy+=this.params.foxFoodEnergy; }
+        if(this.rng.chance(.032) || a.energy<=0 || a.age>this.params.foxMaxAge){ a._dead=true; continue; }
         this.reproduce(a,'fox',.035);
       }
     }
@@ -160,6 +164,13 @@ class Ecosystem {
     g.setLineDash([]); g.strokeStyle='#26382d';g.lineWidth=1.4;
     g.beginPath();g.moveTo(L,T);g.lineTo(L,T+ph);g.lineTo(cssW-R,T+ph);g.stroke();
     g.beginPath();g.moveTo(cssW-R,T);g.lineTo(cssW-R,T+ph);g.stroke();
+    const firstStep=data[0].step||0, lastStep=data[data.length-1].step||0;
+    g.fillStyle='#647168'; g.font='11px system-ui'; g.textAlign='center';
+    for(let i=0;i<=5;i++){
+      const xx=L+pw*i/5;
+      const sv=Math.round(firstStep+(lastStep-firstStep)*i/5);
+      g.fillText(String(sv),xx,T+ph+18);
+    }
     const n=data.length, x=i=>L+(n<=1?0:i/(n-1))*pw;
     const yL=v=>T+ph-(v/yLMax)*ph, yR=v=>T+ph-(v/yRMax)*ph;
     const draw=(key,color,yFn)=>{
@@ -167,8 +178,8 @@ class Ecosystem {
       data.forEach((d,i)=>{ const X=x(i),Y=yFn(d[key]); if(i===0)g.moveTo(X,Y); else g.lineTo(X,Y); });g.stroke();
     };
     draw('rabbit','#24a55b',yL); draw('wolf','#e24f5b',yR);
-    if(this.showThird) draw('third','#8b58a5',yR);
-    if(this.showFox) draw('fox','#ef852e',yR);
+    if(this.params.thirdInitial>0) draw('third','#8b58a5',yR);
+    if(this.params.foxInitial>0) draw('fox','#ef852e',yR);
     g.fillStyle='#49574e';g.font='12px system-ui';g.textAlign='center';g.fillText('STEP',L+pw/2,cssH-9);
     g.save();g.translate(16,T+ph/2);g.rotate(-Math.PI/2);g.fillText('피식자 개체수',0,0);g.restore();
     g.save();g.translate(cssW-10,T+ph/2);g.rotate(Math.PI/2);g.fillText('포식자 개체수',0,0);g.restore();

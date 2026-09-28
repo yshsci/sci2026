@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rabbits & Wolves · 생존 게임</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><div class="brand-mark">🏆</div><div><small>통합과학 2 · 생태계 상호작용</small><h1>Rabbits <b>&</b> Wolves</h1></div></div>
+  <nav class="nav"><a href="index.html">모의실험</a><a class="active" href="game.html">생존 게임</a><a href="submit.html">캡처·해석 제출</a></nav>
+</div></header>
+<main class="page" id="gameCaptureArea">
+  <div class="lab-grid">
+    <section class="panel">
+      <div class="section-title"><div><div class="kicker">SURVIVAL CHALLENGE</div><h2>생태계 생존 경쟁</h2></div><div><div class="score" id="score">0</div><small>생존 STEP</small></div></div>
+      <div class="status-row">
+        <div class="status-cell"><small>STEP</small><div class="status-value" id="gStep">000</div></div>
+        <div class="status-cell"><small>식생</small><div class="status-value">🌿 <span id="gVeg">0</span></div></div>
+        <div class="status-cell"><small>피식자</small><div class="status-value">🐇 <span id="gRabbit">0</span></div></div>
+        <div class="status-cell"><small>포식자</small><div class="status-value">🐺 <span id="gWolf">0</span></div></div>
+        <div class="status-cell"><small>상태</small><div class="status-value" id="gStatus" style="font-size:17px">설계 중</div></div>
+      </div>
+      <div class="eco-wrap"><canvas id="gameWorld" width="980" height="645"></canvas></div>
+      <div class="world-note"><span>도전 시작 후에는 조건을 바꿀 수 없습니다.</span><span>피식자 또는 포식자가 0이 되면 종료됩니다.</span></div>
+    </section>
+
+    <aside class="side-stack">
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">DESIGN</div><h3>초기 생태계 설계</h3></div></div>
+        <div class="budget">예산 220점 · 🐇 1점 / 🐺 5점 / 🦅 10점 / 🦊 6점<br><span id="budgetText">사용 160점 · 남음 60점</span></div>
+        <div class="game-param" style="margin-top:10px">
+          <div class="control"><label>🐇 초기 개체수 <output id="gRiOut">100</output></label><input id="gRi" type="range" min="20" max="200" step="5" value="100"></div>
+          <div class="control"><label>🐺 초기 개체수 <output id="gWiOut">12</output></label><input id="gWi" type="range" min="2" max="40" value="12"></div>
+          <div class="control"><label>🦅 3차 소비자 초기 개체수 <output id="gTiOut">0</output></label><input id="gTi" type="range" min="0" max="10" value="0" step="1"></div>
+          <div class="control"><label>🦊 붉은여우 초기 개체수 <output id="gFiOut">0</output></label><input id="gFi" type="range" min="0" max="15" value="0" step="1"></div>
+        </div>
+        <div class="btn-row"><button id="startChallenge" class="btn-primary">도전 시작</button><button id="restartChallenge" class="btn-secondary">다시 설계</button><button id="gameCaptureBtn" class="btn-secondary">📷 결과 저장</button></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">LIVE ECOLOGICAL PYRAMID</div><h3>실시간 생태 피라미드</h3></div></div>
+        <div class="pyramid">
+          <div id="gpThird" class="pyr-bar pyr-third"><span>🦅 3차 소비자</span><span id="gpThirdCount">0</span></div>
+          <div id="gpWolf" class="pyr-bar pyr-wolf"><span>🐺 포식자</span><span id="gpWolfCount">0</span></div>
+          <div id="gpRabbit" class="pyr-bar pyr-rabbit"><span>🐇 피식자</span><span id="gpRabbitCount">0</span></div>
+          <div id="gpPlant" class="pyr-bar pyr-plant"><span>🌿 식생량</span><span id="gpPlantCount">0</span></div>
+        </div>
+        <div class="fox-row"><span>🦊 붉은여우 · 독립 포식자</span><span id="gpFoxCount">0</span></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-title"><div><div class="kicker">RULE</div><h3>도전 규칙</h3></div></div>
+        <ol class="obs">
+          <li>모든 학생은 같은 난수 seed와 같은 출생률·사망률을 사용합니다.</li>
+          <li>네 생물의 초기 개체수를 예산 범위에서 설계합니다.</li>
+          <li>피식자 또는 포식자가 사라지거나 250 STEP에 도달하면 종료됩니다.</li>
+          <li>결과 화면을 캡처해 제출 페이지에서 해석과 함께 제출합니다.</li>
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  <section class="panel graph-panel">
+    <div class="section-title"><div><div class="kicker">POPULATION FLUCTUATION</div><h3>생존 과정 · 양축 그래프</h3></div><small style="color:var(--muted)">왼쪽 축: 피식자 · 오른쪽 축: 포식자류</small></div>
+    <div class="legend"><span><i style="background:#24a55b"></i>피식자</span><span><i style="background:#e24f5b"></i>포식자</span><span><i style="background:#8b58a5"></i>3차 소비자</span><span><i style="background:#ef852e"></i>붉은여우</span></div>
+    <div class="graph-wrap"><canvas id="gameGraph"></canvas></div>
+  </section>
+</main>
+<script src="ecosystem.js"></script>
+<script>
+const game=new Ecosystem(document.getElementById('gameWorld'),document.getElementById('gameGraph'),{seed:424242});
+// 게임은 모의실험보다 빠르게 생존 압박이 커지도록 별도 밸런스를 사용합니다.
+game.configure({
+  rabbitBirth:.115,rabbitDeath:.018,wolfBirth:.048,wolfDeath:.045,rabbitInitial:100,wolfInitial:12,
+  thirdInitial:0,foxInitial:0,vegRegrowth:.060,rabbitMetabolic:.65,wolfMetabolic:1.00,
+  rabbitFoodEnergy:2.8,wolfFoodEnergy:9,rabbitMaxAge:100,wolfMaxAge:125
+});
+let challenging=false,best=+(localStorage.getItem('rw_best')||0);
+function cost(){return +gRi.value + 5*(+gWi.value) + 10*(+gTi.value) + 6*(+gFi.value)}
+function syncDesign(){
+  gRiOut.textContent=gRi.value;gWiOut.textContent=gWi.value;gTiOut.textContent=gTi.value;gFiOut.textContent=gFi.value;
+  const used=cost(),remain=220-used;budgetText.textContent=`사용 ${used}점 · 남음 ${remain}점`;
+  budgetText.style.color=remain<0?'#b42318':'#165f38';startChallenge.disabled=remain<0||challenging;
+}
+function gameParams(){return {
+  rabbitInitial:+gRi.value,wolfInitial:+gWi.value,thirdInitial:+gTi.value,foxInitial:+gFi.value,
+  rabbitBirth:.115,rabbitDeath:.018,wolfBirth:.048,wolfDeath:.045,vegRegrowth:.060,
+  rabbitMetabolic:.65,wolfMetabolic:1.00,rabbitFoodEnergy:2.8,wolfFoodEnergy:9,
+  rabbitMaxAge:100,wolfMaxAge:125
+}}
+function doReset(){
+  challenging=false;game.stop();[gRi,gWi,gTi,gFi].forEach(el=>el.disabled=false);
+  startChallenge.disabled=false;gStatus.textContent='설계 중';score.textContent='0';
+  game.configure(gameParams());game.reset(424242);syncDesign();
+}
+function start(){
+  if(cost()>220)return;
+  challenging=true;[gRi,gWi,gTi,gFi].forEach(el=>el.disabled=true);startChallenge.disabled=true;
+  game.configure(gameParams());game.reset(424242);
+  gStatus.textContent='진행 중';game.start(75);
+}
+game.onUpdate=s=>{
+  gStep.textContent=String(s.step).padStart(3,'0');gVeg.textContent=s.veg;gRabbit.textContent=s.rabbit;gWolf.textContent=s.wolf;score.textContent=s.step;
+  updatePyramid('gp',s);
+  if(challenging && (s.rabbit===0 || s.wolf===0 || s.step>=250)){
+    game.stop();challenging=false;gStatus.textContent=s.step>=250?'안정화 성공':'멸종';
+    if(s.step>best){best=s.step;localStorage.setItem('rw_best',best);}
+    localStorage.setItem('rw_game_score',String(s.step));
+    game.render();
+  }
+};
+[gRi,gWi,gTi,gFi].forEach(el=>el.addEventListener('input',syncDesign));
+startChallenge.onclick=start;restartChallenge.onclick=doReset;
+gameCaptureBtn.onclick=()=>saveCapture('gameCaptureArea','capture_game');
+syncDesign();doReset();
+window.addEventListener('resize',()=>game.render());
+</script>
+</body></html>
