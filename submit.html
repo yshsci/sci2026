@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rabbits & Wolves · 캡처·해석 제출</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><div class="brand-mark">📝</div><div><small>통합과학 2 · 생태계 상호작용</small><h1>Rabbits <b>&</b> Wolves</h1></div></div>
+  <nav class="nav"><a href="index.html">모의실험</a><a href="game.html">생존 게임</a><a class="active" href="submit.html">기록 비교·해석 제출</a></nav>
+</div></header>
+
+<main class="page">
+  <section class="panel submit-box">
+    <div class="section-title">
+      <div><div class="kicker">COMPARE & SUBMIT</div><h2>실험 기록 비교와 해석 제출</h2></div>
+      <div class="selected-summary" id="selectedSummary">선택 0 / 최대 4개</div>
+    </div>
+
+    <div class="records-section">
+      <div class="records-head">
+        <div>
+          <b>저장한 실험 기록</b><br>
+          <small>같은 기기에서 최대 6회까지 임시 저장됩니다. 비교할 기록을 최대 4개 선택하세요.</small>
+        </div>
+        <button id="clearAllBtn" class="btn-secondary" type="button">전체 기록 지우기</button>
+      </div>
+      <div id="recordsGrid" class="records-grid"></div>
+    </div>
+
+    <div class="compare-note">
+      기록 카드에는 실행 조건과 종료 시점이 함께 저장됩니다. 조건을 달리한 결과를 골라 그래프와 생태 피라미드의 차이를 비교한 뒤 아래에 해석을 작성하세요.
+    </div>
+
+    <div class="form-grid" style="margin-top:14px">
+      <div>
+        <div class="field"><label>반 / 학번</label><input id="studentId" placeholder="예: 2-3 15"></div>
+        <div class="field" style="margin-top:10px"><label>이름</label><input id="studentName" placeholder="이름"></div>
+        <div class="field" style="margin-top:10px"><label>비교 및 해석</label>
+          <textarea id="interpretation" placeholder="선택한 기록들의 조건 차이와 결과 차이를 비교하여 자신의 언어로 작성하세요. 예: 어떤 조건을 바꾸었는지, 개체수 변동의 폭·주기·멸종 시점이 어떻게 달라졌는지 등을 근거와 함께 서술하세요."></textarea>
+        </div>
+        <div class="btn-row" style="margin-top:12px"><button id="submitBtn" class="btn-primary" type="button">선택 기록과 해석 제출</button></div>
+        <div id="submitStatus" class="notice" style="margin-top:10px;background:#f4f7f3;border-color:#d6dfd4">아직 제출하지 않았습니다.</div>
+      </div>
+
+      <div>
+        <div class="capture-preview" id="preview">
+          <span style="color:var(--muted)">기록을 선택하면 첫 번째 선택 기록의 큰 미리보기가 표시됩니다.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <iframe name="submitFrame" id="submitFrame" style="display:none"></iframe>
+  <form id="hiddenForm" method="POST" target="submitFrame" style="display:none">
+    <input name="studentId">
+    <input name="studentName">
+    <input name="interpretation">
+    <input name="recordsJson">
+    <input name="imagesJson">
+  </form>
+</main>
+
+<script>
+const WEB_APP_URL="PASTE_APPS_SCRIPT_WEB_APP_URL_HERE";
+const RECORDS_KEY='rw_experiment_records_v2';
+const MAX_SELECTED=4;
+const $=id=>document.getElementById(id);
+let selectedIds=[];
+
+function getRecords(){
+  try{
+    const r=JSON.parse(localStorage.getItem(RECORDS_KEY)||'[]');
+    return Array.isArray(r)?r:[];
+  }catch(e){ return []; }
+}
+function setRecords(records){
+  localStorage.setItem(RECORDS_KEY,JSON.stringify(records.slice(-6)));
+}
+function fmt(n){return Number.isFinite(Number(n))?Number(n):0}
+function paramText(r){
+  const p=r.params||{};
+  const parts=[];
+  if(p.rabbitBirth!=null) parts.push(`🐇 출생 ${p.rabbitBirth}%`);
+  if(p.rabbitDeath!=null) parts.push(`사망 ${p.rabbitDeath}%`);
+  if(p.rabbitInitial!=null) parts.push(`초기 ${p.rabbitInitial}`);
+  if(p.wolfBirth!=null) parts.push(`🐺 출생 ${p.wolfBirth}%`);
+  if(p.wolfDeath!=null) parts.push(`사망 ${p.wolfDeath}%`);
+  if(p.wolfInitial!=null) parts.push(`초기 ${p.wolfInitial}`);
+  if(p.thirdInitial!=null) parts.push(`🦅 ${p.thirdInitial}`);
+  if(p.foxInitial!=null) parts.push(`🦊 ${p.foxInitial}`);
+  return parts.join(' · ');
+}
+function render(){
+  const records=getRecords();
+  selectedIds=selectedIds.filter(id=>records.some(r=>r.id===id));
+  $('selectedSummary').textContent=`선택 ${selectedIds.length} / 최대 ${MAX_SELECTED}개`;
+  if(!records.length){
+    $('recordsGrid').innerHTML='<div class="record-empty" style="grid-column:1/-1">아직 저장한 실험 기록이 없습니다.<br>모의실험 또는 생존 게임에서 <b>실험 기록에 추가</b>를 눌러 주세요.</div>';
+    $('preview').innerHTML='<span style="color:var(--muted)">저장된 기록이 없습니다.</span>';
+    return;
+  }
+  $('recordsGrid').innerHTML=records.map((r,i)=>{
+    const sel=selectedIds.includes(r.id);
+    const date=new Date(r.savedAt);
+    return `<article class="record-card ${sel?'selected':''}" data-id="${r.id}">
+      <div class="record-thumb"><img src="${r.imageData}" alt="${r.type} 기록 ${i+1}"></div>
+      <div class="record-body">
+        <div class="record-top">
+          <div><div class="record-title">기록 ${i+1} · ${r.type}</div>
+          <div class="record-meta">STEP ${fmt(r.step)}${r.score?` · 점수 ${fmt(r.score)}`:''}<br>${paramText(r)}</div></div>
+          <label class="record-select"><input class="record-check" type="checkbox" ${sel?'checked':''}> 비교</label>
+        </div>
+        <div class="record-actions">
+          <button type="button" class="btn-secondary view-btn">크게 보기</button>
+          <button type="button" class="btn-secondary delete-btn">삭제</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+
+  document.querySelectorAll('.record-card').forEach(card=>{
+    const id=card.dataset.id;
+    const checkbox=card.querySelector('.record-check');
+    checkbox.addEventListener('change',()=>{
+      if(checkbox.checked){
+        if(selectedIds.length>=MAX_SELECTED){
+          checkbox.checked=false;
+          alert(`비교 제출은 최대 ${MAX_SELECTED}개까지 선택할 수 있습니다.`);
+          return;
+        }
+        if(!selectedIds.includes(id)) selectedIds.push(id);
+      }else selectedIds=selectedIds.filter(x=>x!==id);
+      render();
+    });
+    card.querySelector('.view-btn').addEventListener('click',()=>{
+      const r=getRecords().find(x=>x.id===id);
+      if(r) $('preview').innerHTML=`<img src="${r.imageData}" alt="선택 기록 미리보기">`;
+    });
+    card.querySelector('.delete-btn').addEventListener('click',()=>{
+      if(!confirm('이 기록을 삭제할까요?')) return;
+      setRecords(getRecords().filter(x=>x.id!==id));
+      selectedIds=selectedIds.filter(x=>x!==id);
+      render();
+    });
+  });
+
+  const first=getRecords().find(r=>selectedIds.includes(r.id));
+  if(first) $('preview').innerHTML=`<img src="${first.imageData}" alt="선택 기록 미리보기">`;
+  else $('preview').innerHTML='<span style="color:var(--muted)">비교할 기록을 선택하세요.</span>';
+}
+
+$('clearAllBtn').onclick=()=>{
+  if(!getRecords().length) return;
+  if(confirm('이 기기에 저장된 실험 기록 6개를 모두 지울까요?')){
+    localStorage.removeItem(RECORDS_KEY);selectedIds=[];render();
+  }
+};
+
+$('submitBtn').onclick=()=>{
+  const records=getRecords().filter(r=>selectedIds.includes(r.id));
+  if(!$('studentId').value.trim()||!$('studentName').value.trim()||!$('interpretation').value.trim()){
+    $('submitStatus').textContent='반/학번, 이름, 비교 및 해석을 모두 입력하세요.';return;
+  }
+  if(records.length<2){
+    $('submitStatus').textContent='비교를 위해 최소 2개의 실험 기록을 선택하세요.';return;
+  }
+  if(WEB_APP_URL.startsWith('PASTE_')){
+    $('submitStatus').textContent='제출 기능이 아직 연결되지 않았습니다. 교사에게 알려 주세요.';return;
+  }
+
+  const summaries=records.map(r=>({
+    id:r.id,type:r.type,savedAt:r.savedAt,step:r.step,score:r.score||0,
+    params:r.params||{},finalCounts:r.finalCounts||{}
+  }));
+  const images=records.map(r=>({id:r.id,imageData:r.imageData}));
+
+  const f=$('hiddenForm');
+  f.action=WEB_APP_URL;
+  f.studentId.value=$('studentId').value.trim();
+  f.studentName.value=$('studentName').value.trim();
+  f.interpretation.value=$('interpretation').value.trim();
+  f.recordsJson.value=JSON.stringify(summaries);
+  f.imagesJson.value=JSON.stringify(images);
+  f.submit();
+  $('submitStatus').textContent=`선택한 ${records.length}개 기록과 해석을 제출했습니다.`;
+};
+render();
+</script>
+</body>
+</html>
